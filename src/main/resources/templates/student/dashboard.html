@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Student Dashboard - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">🎓</div>
+                <h1 class="notion-page-title" th:text="${student.name}">Student Name</h1>
+                <p class="notion-page-desc">
+                    <span class="notion-tag blue" th:text="${student.branch}">CSE</span>
+                    <span class="notion-tag gray" th:text="'CGPA: ' + ${student.cgpa}">CGPA: 8.5</span>
+                    <span class="notion-tag gray" th:text="${student.backlogs} + ' Backlogs'">0 Backlogs</span>
+                    <span th:if="${student.placed}" class="notion-tag green">
+                        <i class="bi bi-check-circle"></i> Placed (<span th:text="${student.offerLpa}">12.0</span> LPA)
+                    </span>
+                    <span th:unless="${student.placed}" class="notion-tag yellow">
+                        Seeking Placement
+                    </span>
+                </p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Resume missing callout if null -->
+            <div th:if="${student.resumeFileId == null}" class="notion-callout warning">
+                <div class="notion-callout-icon"><i class="bi bi-info-circle"></i></div>
+                <div class="notion-callout-text">
+                    You haven't uploaded a resume yet. Recruiters review PDF resumes when shortlisting.
+                    <a th:href="@{/student/profile}" style="font-weight: 500; text-decoration: underline; margin-left: 6px;">Upload resume</a>
+                </div>
+            </div>
+
+            <!-- Metric Boxes (Flat Notion Grid) -->
+            <div class="notion-metrics-grid">
+                <a th:href="@{/student/jobs}" class="notion-metric-box">
+                    <div class="notion-metric-label">Eligible Openings</div>
+                    <div class="notion-metric-value" th:text="${eligibleJobsCount}">0</div>
+                </a>
+                <a th:href="@{/student/applications}" class="notion-metric-box">
+                    <div class="notion-metric-label">Active Applications</div>
+                    <div class="notion-metric-value" th:text="${applicationsCount}">0</div>
+                </a>
+                <a th:href="@{/student/profile}" class="notion-metric-box">
+                    <div class="notion-metric-label">Resume Status</div>
+                    <div style="font-size: 15px; font-weight: 600; margin-top: 6px;">
+                        <span th:if="${student.resumeFileId != null}" class="notion-tag green">Uploaded</span>
+                        <span th:unless="${student.resumeFileId != null}" class="notion-tag red">Missing</span>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Recent Applications Section -->
+            <div class="notion-panel">
+                <div class="notion-panel-header">
+                    <h2 class="notion-panel-title">
+                        <i class="bi bi-clock-history" style="color: var(--text-tertiary);"></i>
+                        <span>Recent Applications</span>
+                    </h2>
+                    <a th:href="@{/student/applications}" class="notion-btn notion-btn-ghost notion-btn-sm">View all</a>
+                </div>
+
+                <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(recentApplications)}">
+                    <table class="notion-table">
+                        <thead>
+                            <tr>
+                                <th>Company</th>
+                                <th>Status</th>
+                                <th>Rounds</th>
+                                <th>Date Applied</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="app : ${recentApplications}">
+                                <td style="font-weight: 500;" th:text="${companyNames[app.companyId]} ?: 'Company'">Company</td>
+                                <td>
+                                    <span th:if="${app.status.name() == 'APPLIED'}" class="notion-tag gray">Applied</span>
+                                    <span th:if="${app.status.name() == 'SHORTLISTED'}" class="notion-tag blue">Shortlisted</span>
+                                    <span th:if="${app.status.name() == 'IN_PROGRESS'}" class="notion-tag yellow">In Progress</span>
+                                    <span th:if="${app.status.name() == 'OFFERED'}" class="notion-tag green">Offered (<span th:text="${app.offerLpa}">12</span> LPA)</span>
+                                    <span th:if="${app.status.name() == 'REJECTED'}" class="notion-tag red">Not Selected</span>
+                                </td>
+                                <td>
+                                    <span class="notion-tag gray" th:text="${#lists.size(app.rounds)} + ' rounds'">0 rounds</span>
+                                </td>
+                                <td style="color: var(--text-secondary);" th:text="${#temporals.format(app.appliedAt, 'dd MMM yyyy')}">Date</td>
+                                <td style="text-align: right;">
+                                    <a th:href="@{/student/applications}" class="notion-btn notion-btn-ghost notion-btn-sm">Timeline</a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="notion-empty-state" th:if="${#lists.isEmpty(recentApplications)}">
+                    <div class="notion-empty-icon"><i class="bi bi-file-earmark-text"></i></div>
+                    <div class="notion-empty-title">No applications yet</div>
+                    <div class="notion-empty-subtitle">Explore open campus recruitment jobs that match your eligibility.</div>
+                    <a th:href="@{/student/jobs}" class="notion-btn notion-btn-primary notion-btn-sm">Browse jobs</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

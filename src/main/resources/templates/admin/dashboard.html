@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Placement Cell Analytics</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content wide">
+            <div class="notion-page-header" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div class="notion-page-icon">📊</div>
+                    <h1 class="notion-page-title">Placement Analytics</h1>
+                    <p class="notion-page-desc">Institutional recruitment metrics, department aggregation, and offer distributions.</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <a th:href="@{/admin/companies/new}" class="notion-btn notion-btn-secondary notion-btn-sm">
+                        <i class="bi bi-building-add"></i> Onboard Company
+                    </a>
+                    <a th:href="@{/admin/jobs/pending}" class="notion-btn notion-btn-secondary notion-btn-sm">
+                        <i class="bi bi-clock-history"></i>
+                        Pending Approvals (<span th:text="${pendingJobsCount}">0</span>)
+                    </a>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- KPI Metric Boxes -->
+            <div class="notion-metrics-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+                <div class="notion-metric-box">
+                    <div class="notion-metric-label">Registered Students</div>
+                    <div class="notion-metric-value" th:text="${metrics.totalStudents}">0</div>
+                </div>
+                <div class="notion-metric-box">
+                    <div class="notion-metric-label">Placed Students</div>
+                    <div class="notion-metric-value" style="color: var(--tag-green-text);" th:text="${metrics.totalPlaced}">0</div>
+                </div>
+                <div class="notion-metric-box">
+                    <div class="notion-metric-label">Placement Rate</div>
+                    <div class="notion-metric-value" style="color: var(--accent-blue);" th:text="${metrics.overallPlacementPercentage} + '%'">0%</div>
+                </div>
+                <div class="notion-metric-box">
+                    <div class="notion-metric-label">Average Package</div>
+                    <div class="notion-metric-value" th:text="${metrics.overallAvgPackage} + ' LPA'">0 LPA</div>
+                </div>
+                <div class="notion-metric-box">
+                    <div class="notion-metric-label">Highest Package</div>
+                    <div class="notion-metric-value" style="color: var(--tag-yellow-text);" th:text="${metrics.overallHighestPackage} + ' LPA'">0 LPA</div>
+                </div>
+            </div>
+
+            <!-- Charts Row (Notion Flat Panels) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div class="notion-panel" style="margin-bottom: 0;">
+                    <div class="notion-panel-header">
+                        <h2 class="notion-panel-title">
+                            <i class="bi bi-bar-chart" style="color: var(--text-tertiary);"></i>
+                            <span>Department Placement Rate (%)</span>
+                        </h2>
+                    </div>
+                    <div style="height: 220px; position: relative;">
+                        <canvas id="placementRateChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="notion-panel" style="margin-bottom: 0;">
+                    <div class="notion-panel-header">
+                        <h2 class="notion-panel-title">
+                            <i class="bi bi-graph-up" style="color: var(--text-tertiary);"></i>
+                            <span>Department Packages (Avg vs Max LPA)</span>
+                        </h2>
+                    </div>
+                    <div style="height: 220px; position: relative;">
+                        <canvas id="packageChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Department Breakdown Table -->
+            <div class="notion-panel">
+                <div class="notion-panel-header">
+                    <h2 class="notion-panel-title">
+                        <i class="bi bi-table" style="color: var(--text-tertiary);"></i>
+                        <span>Department Metrics (MongoDB Aggregation)</span>
+                    </h2>
+                </div>
+
+                <div class="notion-table-wrapper">
+                    <table class="notion-table">
+                        <thead>
+                            <tr>
+                                <th>Department</th>
+                                <th>Registered</th>
+                                <th>Placed</th>
+                                <th>Placement Rate</th>
+                                <th>Average Package</th>
+                                <th>Highest Package</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="m : ${metrics.departmentMetrics}">
+                                <td style="font-weight: 600;" th:text="${m.branch}">CSE</td>
+                                <td th:text="${m.totalStudents}">0</td>
+                                <td><span class="notion-tag green" th:text="${m.placedCount}">0</span></td>
+                                <td>
+                                    <span class="notion-tag blue" th:text="${m.placementPercentage} + '%'">0%</span>
+                                </td>
+                                <td th:text="${m.averagePackage} + ' LPA'">0 LPA</td>
+                                <td style="font-weight: 600; color: var(--tag-green-text);" th:text="${m.highestPackage} + ' LPA'">0 LPA</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Company Offers and Unplaced Row -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 16px;">
+                <!-- Company Offers List -->
+                <div class="notion-panel" style="margin-bottom: 0;">
+                    <div class="notion-panel-header">
+                        <h2 class="notion-panel-title">
+                            <i class="bi bi-pie-chart" style="color: var(--text-tertiary);"></i>
+                            <span>Offers by Company</span>
+                        </h2>
+                    </div>
+                    <div th:if="${not #lists.isEmpty(metrics.companyOfferMetrics)}">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <div th:each="co : ${metrics.companyOfferMetrics}" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border-light); font-size: 13px;">
+                                <span style="font-weight: 500;" th:text="${co.companyName}">Company</span>
+                                <span class="notion-tag blue" th:text="${co.offerCount} + ' offers'">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(metrics.companyOfferMetrics)}" style="font-size: 13px; color: var(--text-tertiary); padding: 12px 0;">
+                        No placement offers recorded yet.
+                    </div>
+                </div>
+
+                <!-- Unplaced Students -->
+                <div class="notion-panel" style="margin-bottom: 0;">
+                    <div class="notion-panel-header">
+                        <h2 class="notion-panel-title">
+                            <i class="bi bi-person-exclamation" style="color: var(--text-tertiary);"></i>
+                            <span>Students Seeking Placement (<span th:text="${#lists.size(metrics.unplacedStudents)}">0</span>)</span>
+                        </h2>
+                        <a th:href="@{/admin/students}" class="notion-btn notion-btn-ghost notion-btn-sm">View all</a>
+                    </div>
+
+                    <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(metrics.unplacedStudents)}">
+                        <table class="notion-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Branch</th>
+                                    <th>CGPA</th>
+                                    <th>Backlogs</th>
+                                    <th>Resume</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="s : ${metrics.unplacedStudents}">
+                                    <td style="font-weight: 500;" th:text="${s.name}">Name</td>
+                                    <td><span class="notion-tag blue" th:text="${s.branch}">CSE</span></td>
+                                    <td th:text="${s.cgpa}">8.0</td>
+                                    <td>
+                                        <span th:if="${s.backlogs == 0}" class="notion-tag green">0</span>
+                                        <span th:unless="${s.backlogs == 0}" class="notion-tag red" th:text="${s.backlogs}">1</span>
+                                    </td>
+                                    <td>
+                                        <a th:if="${s.resumeFileId != null}" th:href="@{/admin/students/{id}/resume(id=${s.id})}" class="notion-btn notion-btn-ghost notion-btn-sm" target="_blank">
+                                            <i class="bi bi-file-earmark-pdf" style="color: var(--tag-red-text);"></i> PDF
+                                        </a>
+                                        <span th:unless="${s.resumeFileId != null}" style="color: var(--text-tertiary); font-size: 12px;">None</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+
+<!-- Chart.js Quiet Notion Theme Script -->
+<script th:inline="javascript">
+/*<![CDATA[*/
+    const deptMetrics = /*[[${metrics.departmentMetrics}]]*/ [];
+    const branches = deptMetrics.map(m => m.branch);
+    const placementRates = deptMetrics.map(m => m.placementPercentage);
+    const avgPackages = deptMetrics.map(m => m.averagePackage);
+    const highestPackages = deptMetrics.map(m => m.highestPackage);
+
+    Chart.defaults.font.family = 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#787774';
+
+    // Placement Rate Bar Chart
+    const ctxRate = document.getElementById('placementRateChart');
+    if (ctxRate && branches.length > 0) {
+        new Chart(ctxRate, {
+            type: 'bar',
+            data: {
+                labels: branches,
+                datasets: [{
+                    label: 'Placement %',
+                    data: placementRates,
+                    backgroundColor: '#D3E5F3',
+                    borderColor: '#28456C',
+                    borderWidth: 1,
+                    borderRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, max: 100, grid: { color: '#F1F1EF' }, ticks: { callback: v => v + '%' } }
+                }
+            }
+        });
+    }
+
+    // Packages Bar Chart (Avg vs Max)
+    const ctxPackage = document.getElementById('packageChart');
+    if (ctxPackage && branches.length > 0) {
+        new Chart(ctxPackage, {
+            type: 'bar',
+            data: {
+                labels: branches,
+                datasets: [
+                    {
+                        label: 'Avg Package',
+                        data: avgPackages,
+                        backgroundColor: '#EDF6EE',
+                        borderColor: '#2B593F',
+                        borderWidth: 1,
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Max Package',
+                        data: highestPackages,
+                        backgroundColor: '#FBF3DB',
+                        borderColor: '#89632A',
+                        borderWidth: 1,
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { boxWidth: 12 } }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: '#F1F1EF' }, ticks: { callback: v => v + 'L' } }
+                }
+            }
+        });
+    }
+/*]]>*/
+</script>
+
+</body>
+</html>

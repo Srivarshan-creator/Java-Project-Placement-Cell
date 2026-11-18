@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Eligible Jobs - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content wide">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">💼</div>
+                <h1 class="notion-page-title">Eligible Job Openings</h1>
+                <p class="notion-page-desc">
+                    Filtered for your profile: <strong th:text="${student.branch}">CSE</strong> department,
+                    minimum CGPA &le; <strong th:text="${student.cgpa}">8.5</strong>,
+                    max backlogs &ge; <strong th:text="${student.backlogs}">0</strong>.
+                </p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Single offer notice -->
+            <div th:if="${student.placed && singleOfferPolicy}" class="notion-callout warning">
+                <div class="notion-callout-icon"><i class="bi bi-lock"></i></div>
+                <div class="notion-callout-text">
+                    <strong>Single-Offer Policy Active:</strong> You have already secured a placement offer. Under campus policy, you cannot submit applications to additional positions.
+                </div>
+            </div>
+
+            <!-- Jobs List Table / Database View -->
+            <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(jobs)}">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th>Role &amp; Company</th>
+                            <th>Package</th>
+                            <th>Min CGPA</th>
+                            <th>Max Backlogs</th>
+                            <th>Branches</th>
+                            <th>Deadline</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="job : ${jobs}">
+                            <td>
+                                <a th:href="@{/student/jobs/{id}(id=${job.id})}" style="font-weight: 600; color: var(--text-primary); display: block;">
+                                    <span th:text="${job.title}">Software Engineer</span>
+                                </a>
+                                <span class="notion-tag blue" style="margin-top: 4px;" th:text="${companyNames[job.companyId]} ?: 'Company'">Company</span>
+                            </td>
+                            <td>
+                                <span class="notion-tag green" style="font-weight: 600;" th:text="${job.packageLpa} + ' LPA'">12.0 LPA</span>
+                            </td>
+                            <td th:text="${job.minCgpa}">7.0</td>
+                            <td th:text="${job.maxBacklogs}">0</td>
+                            <td>
+                                <span th:each="b : ${job.allowedBranches}" class="notion-tag gray" style="margin-right: 4px;" th:text="${b}">CSE</span>
+                            </td>
+                            <td style="color: var(--text-secondary);" th:text="${#temporals.format(job.deadline, 'dd MMM yyyy')}">2026-12-01</td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                    <!-- Already applied -->
+                                    <button th:if="${appliedJobIds.contains(job.id)}" class="notion-btn notion-btn-ghost notion-btn-sm" disabled>
+                                        <i class="bi bi-check2"></i> Applied
+                                    </button>
+
+                                    <!-- Apply button -->
+                                    <form th:if="${!appliedJobIds.contains(job.id) && (!student.placed || !singleOfferPolicy)}"
+                                          th:action="@{/student/jobs/{id}/apply(id=${job.id})}" method="post" style="margin: 0;">
+                                        <button type="submit" class="notion-btn notion-btn-primary notion-btn-sm">
+                                            Apply
+                                        </button>
+                                    </form>
+
+                                    <a th:href="@{/student/jobs/{id}(id=${job.id})}" class="notion-btn notion-btn-secondary notion-btn-sm">
+                                        Details
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(jobs)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-briefcase"></i></div>
+                    <div class="notion-empty-title">No eligible jobs currently available</div>
+                    <div class="notion-empty-subtitle">Approved positions matching your department and academic standing will appear here.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

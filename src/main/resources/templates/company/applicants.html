@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="'Applicants - ' + ${job.title}">Job Applicants</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+    <style>
+        .batch-sticky-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1E293B;
+            color: #FFFFFF;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            display: none;
+            align-items: center;
+            gap: 16px;
+            z-index: 1000;
+            animation: slideUp 0.2s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, 20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .batch-sticky-bar .count-badge {
+            background: #3B82F6;
+            color: white;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        /* Custom responsive table layout to eliminate horizontal scrolling */
+        .applicants-container {
+            max-width: 100% !important;
+            padding: 24px 28px 80px 28px !important;
+        }
+        .applicants-table-wrapper {
+            width: 100%;
+            overflow-x: visible;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            background: #FFFFFF;
+        }
+        .applicants-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            table-layout: auto;
+        }
+        .applicants-table th {
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-align: left;
+            padding: 9px 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border-bottom: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+            white-space: nowrap;
+        }
+        .applicants-table th:last-child {
+            border-right: none;
+        }
+        .applicants-table td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--border-light);
+            border-right: 1px solid var(--border-light);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+        .applicants-table td:last-child {
+            border-right: none;
+        }
+        .applicants-table tbody tr:hover {
+            background-color: var(--bg-hover);
+        }
+        .action-cell-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 7px;
+            font-size: 11.5px;
+            font-weight: 500;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+        .action-cell-btn.primary {
+            background: #2563EB;
+            color: #FFFFFF;
+        }
+        .action-cell-btn.primary:hover {
+            background: #1D4ED8;
+        }
+        .action-cell-btn.secondary {
+            background: #F1F5F9;
+            color: #334155;
+            border-color: #CBD5E1;
+        }
+        .action-cell-btn.secondary:hover {
+            background: #E2E8F0;
+        }
+        .action-cell-btn.danger {
+            background: #FEF2F2;
+            color: #DC2626;
+            border-color: #FECACA;
+        }
+        .action-cell-btn.danger:hover {
+            background: #FEE2E2;
+        }
+        .action-cell-btn.ghost {
+            background: transparent;
+            color: #64748B;
+        }
+        .action-cell-btn.ghost:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+        }
+        .action-cell-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content applicants-container">
+            <a th:href="@{/company/jobs}" class="notion-btn notion-btn-ghost notion-btn-sm" style="margin-bottom: 16px; padding-left: 0;">
+                <i class="bi bi-arrow-left"></i> Back to Jobs
+            </a>
+
+            <div class="notion-page-header">
+                <div class="notion-page-icon">👥</div>
+                <h1 class="notion-page-title">
+                    Applicants: <span th:text="${job.title}">Software Engineer</span>
+                </h1>
+                <p class="notion-page-desc">
+                    Package: <strong th:text="${job.packageLpa}">12.0</strong> LPA •
+                    Deadline: <span th:text="${#temporals.format(job.deadline, 'dd MMM yyyy')}">Date</span> •
+                    Total applicants: <strong th:text="${totalCount ?: #lists.size(applicants)}">0</strong>
+                </p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Status Filter Tabs with counts -->
+            <div style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border-light); padding-bottom: 12px; overflow-x: auto;">
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id})}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == null || statusFilter == ''} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    All (<span th:text="${statusCounts['ALL'] ?: 0}">0</span>)
+                </a>
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id}, status='APPLIED')}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == 'APPLIED'} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    Applied (<span th:text="${statusCounts['APPLIED'] ?: 0}">0</span>)
+                </a>
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id}, status='SHORTLISTED')}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == 'SHORTLISTED'} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    Shortlisted (<span th:text="${statusCounts['SHORTLISTED'] ?: 0}">0</span>)
+                </a>
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id}, status='IN_PROGRESS')}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == 'IN_PROGRESS'} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    In Progress (<span th:text="${statusCounts['IN_PROGRESS'] ?: 0}">0</span>)
+                </a>
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id}, status='OFFERED')}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == 'OFFERED'} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    Offered (<span th:text="${statusCounts['OFFERED'] ?: 0}">0</span>)
+                </a>
+                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id}, status='REJECTED')}"
+                   class="notion-btn notion-btn-sm" th:classappend="${statusFilter == 'REJECTED'} ? 'notion-btn-secondary' : 'notion-btn-ghost'">
+                    Rejected (<span th:text="${statusCounts['REJECTED'] ?: 0}">0</span>)
+                </a>
+            </div>
+
+            <!-- Table of Applicants (Responsive full-width, zero horizontal scrollbar) -->
+            <div class="applicants-table-wrapper" th:if="${not #lists.isEmpty(applicants)}" style="margin-bottom: 60px;">
+                <table class="applicants-table" id="applicantsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 38px; text-align: center;">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" title="Select all applicants">
+                            </th>
+                            <th style="min-width: 140px;">Candidate</th>
+                            <th style="width: 110px;">Academics</th>
+                            <th style="min-width: 120px;">Skills</th>
+                            <th style="width: 70px; text-align: center;">Resume</th>
+                            <th style="width: 115px;">Status</th>
+                            <th style="min-width: 140px;">Rounds Timeline</th>
+                            <th style="min-width: 160px; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="app : ${applicants}" th:id="'app-row-' + ${app.id}">
+                            <td style="text-align: center;">
+                                <input type="checkbox" class="row-checkbox" th:value="${app.id}"
+                                       th:attr="data-student-name=${studentsMap[app.studentId] != null ? studentsMap[app.studentId].name : 'Student'}"
+                                       th:data-status="${app.status.name()}"
+                                       onchange="updateSelectionState()">
+                            </td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <span style="font-weight: 600; font-size: 13.5px;" th:text="${studentsMap[app.studentId] != null ? studentsMap[app.studentId].name : 'Student'}">Name</span>
+                                    <span class="notion-tag blue" style="font-size: 10px; padding: 1px 5px;" th:text="${app.branch}">CSE</span>
+                                </div>
+                                <div style="font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px;" th:text="'Applied ' + ${#temporals.format(app.appliedAt, 'dd MMM yyyy')}">Date</div>
+                            </td>
+                            <td>
+                                <div style="font-size: 13px;"><strong th:text="${studentsMap[app.studentId] != null ? studentsMap[app.studentId].cgpa : '-'}">8.5</strong> CGPA</div>
+                                <div style="font-size: 11px; color: var(--text-tertiary); margin-top: 1px;" th:text="${studentsMap[app.studentId] != null ? studentsMap[app.studentId].backlogs : 0} + ' backlogs'">0 backlogs</div>
+                            </td>
+                            <td>
+                                <div th:if="${studentsMap[app.studentId] != null}" style="display: flex; flex-wrap: wrap; gap: 3px;">
+                                    <span th:each="sk : ${studentsMap[app.studentId].skills}" class="notion-tag gray" style="font-size: 10.5px; padding: 1px 5px;" th:text="${sk}">Java</span>
+                                </div>
+                            </td>
+                            <td style="text-align: center;">
+                                <a th:if="${studentsMap[app.studentId] != null && studentsMap[app.studentId].resumeFileId != null}"
+                                   th:href="@{/company/students/{id}/resume(id=${app.studentId})}"
+                                   class="action-cell-btn secondary" target="_blank" title="Download PDF Resume" style="padding: 2px 6px;">
+                                    <i class="bi bi-file-earmark-pdf" style="color: #DC2626;"></i> PDF
+                                </a>
+                                <span th:unless="${studentsMap[app.studentId] != null && studentsMap[app.studentId].resumeFileId != null}"
+                                      style="color: var(--text-tertiary); font-size: 11.5px;" title="No resume uploaded">
+                                    None
+                                </span>
+                            </td>
+                            <td>
+                                <span th:if="${app.status.name() == 'APPLIED'}" class="notion-tag gray">Applied</span>
+                                <span th:if="${app.status.name() == 'SHORTLISTED'}" class="notion-tag blue">Shortlisted</span>
+                                <span th:if="${app.status.name() == 'IN_PROGRESS'}" class="notion-tag yellow">In Progress</span>
+                                <span th:if="${app.status.name() == 'OFFERED'}" class="notion-tag green" style="white-space: nowrap;">
+                                    <i class="bi bi-check2"></i> Offered (<span th:text="${app.offerLpa}">12</span>L)
+                                </span>
+                                <span th:if="${app.status.name() == 'REJECTED'}" class="notion-tag red">Rejected</span>
+                            </td>
+                            <td>
+                                <div th:if="${not #lists.isEmpty(app.rounds)}" style="display: flex; flex-direction: column; gap: 3px;">
+                                    <div th:each="r : ${app.rounds}" style="display: flex; align-items: center; gap: 4px; font-size: 11.5px;">
+                                        <span style="color: var(--text-tertiary); font-weight: 500;">R<span th:text="${r.roundNumber}">1</span>:</span>
+                                        <span style="color: var(--text-primary); font-weight: 500; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" th:text="${r.name}" th:title="${r.name}">OA</span>
+                                        <span th:if="${r.result.name() == 'CLEARED'}" class="notion-tag green" style="font-size: 9.5px; padding: 0 4px;">Cleared</span>
+                                        <span th:if="${r.result.name() == 'PENDING'}" class="notion-tag yellow" style="font-size: 9.5px; padding: 0 4px;">Pending</span>
+                                        <span th:if="${r.result.name() == 'FAILED'}" class="notion-tag red" style="font-size: 9.5px; padding: 0 4px;">Failed</span>
+                                    </div>
+                                </div>
+                                <span th:if="${#lists.isEmpty(app.rounds)}" style="color: var(--text-tertiary); font-size: 11.5px;">None</span>
+                            </td>
+
+                            <!-- Actions column: Guaranteed rendering without any th:onclick template errors -->
+                            <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 4px; flex-wrap: wrap; align-items: center;">
+
+                                    <!-- View Profile button (All statuses) -->
+                                    <button type="button" class="action-cell-btn ghost" title="View Student Profile"
+                                            th:attr="data-dialog-id='profileDialog-' + ${app.id}"
+                                            onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                        <i class="bi bi-person"></i>
+                                    </button>
+
+                                    <!-- APPLIED: Shortlist & Reject -->
+                                    <th:block th:if="${app.status.name() == 'APPLIED'}">
+                                        <form th:action="@{/company/applications/{id}/shortlist(id=${app.id})}" method="post" style="margin:0; display:inline;">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                            <input type="hidden" name="jobId" th:value="${job.id}">
+                                            <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+                                            <button type="submit" class="action-cell-btn secondary" title="Shortlist Candidate">
+                                                <i class="bi bi-check-lg"></i> Shortlist
+                                            </button>
+                                        </form>
+
+                                        <button type="button" class="action-cell-btn danger" title="Reject Candidate"
+                                                th:attr="data-dialog-id='rejectDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-x-lg"></i> Reject
+                                        </button>
+                                    </th:block>
+
+                                    <!-- SHORTLISTED: Schedule & Reject -->
+                                    <th:block th:if="${app.status.name() == 'SHORTLISTED'}">
+                                        <button type="button" class="action-cell-btn primary" title="Schedule Interview"
+                                                th:attr="data-dialog-id='scheduleDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-calendar-plus"></i> Schedule
+                                        </button>
+
+                                        <button type="button" class="action-cell-btn danger" title="Reject Candidate"
+                                                th:attr="data-dialog-id='rejectDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-x-lg"></i> Reject
+                                        </button>
+                                    </th:block>
+
+                                    <!-- IN_PROGRESS: Schedule, Result, Advance, Offer, Reject -->
+                                    <th:block th:if="${app.status.name() == 'IN_PROGRESS'}">
+                                        <button type="button" class="action-cell-btn secondary" title="Schedule Another Round"
+                                                th:attr="data-dialog-id='scheduleDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-calendar-event"></i> Schedule
+                                        </button>
+
+                                        <button th:if="${not #lists.isEmpty(app.rounds)}"
+                                                type="button" class="action-cell-btn secondary" title="Record Round Result"
+                                                th:attr="data-dialog-id='resultDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-clipboard-check"></i> Result
+                                        </button>
+
+                                        <form th:action="@{/company/applications/{id}/advance(id=${app.id})}" method="post" style="margin:0; display:inline;">
+                                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                            <input type="hidden" name="jobId" th:value="${job.id}">
+                                            <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+                                            <button type="submit" class="action-cell-btn secondary" title="Advance to Next Round">
+                                                <i class="bi bi-arrow-right"></i> Advance
+                                            </button>
+                                        </form>
+
+                                        <button type="button" class="action-cell-btn primary" title="Extend Offer"
+                                                th:attr="data-dialog-id='offerDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-award"></i> Offer
+                                        </button>
+
+                                        <button type="button" class="action-cell-btn danger" title="Reject Candidate"
+                                                th:attr="data-dialog-id='rejectDialog-' + ${app.id}"
+                                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                                            <i class="bi bi-x-lg"></i> Reject
+                                        </button>
+                                    </th:block>
+
+                                    <!-- OFFERED: View Only Badge -->
+                                    <span th:if="${app.status.name() == 'OFFERED'}" class="notion-tag green" style="display:inline-flex; align-items:center; gap:4px;">
+                                        <i class="bi bi-check-circle-fill"></i> Offered
+                                    </span>
+
+                                    <!-- REJECTED: View Only Badge -->
+                                    <span th:if="${app.status.name() == 'REJECTED'}" class="notion-tag red" style="display:inline-flex; align-items:center; gap:4px;">
+                                        <i class="bi bi-x-circle-fill"></i> Rejected
+                                    </span>
+
+                                </div>
+
+                                <!-- Native HTML5 Dialog: Student Profile -->
+                                <dialog th:id="'profileDialog-' + ${app.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); background: #FFFFFF; text-align: left;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px;">
+                                        <h3 style="font-size: 16px; font-weight: 600; margin: 0;">Candidate Profile</h3>
+                                        <button type="button" class="notion-btn notion-btn-ghost notion-btn-sm" onclick="this.closest('dialog').close()"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                    <div th:if="${studentsMap[app.studentId] != null}">
+                                        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);" th:text="${studentsMap[app.studentId].name}">Student Name</div>
+                                        <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;" th:text="${studentsMap[app.studentId].branch} + ' • ' + ${studentsMap[app.studentId].cgpa} + ' CGPA'">Branch • CGPA</div>
+                                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; margin-bottom: 12px; background: var(--bg-secondary); padding: 10px; border-radius: 4px;">
+                                            <div><strong>Branch:</strong> <span th:text="${studentsMap[app.studentId].branch}">CSE</span></div>
+                                            <div><strong>CGPA:</strong> <span th:text="${studentsMap[app.studentId].cgpa}">9.0</span></div>
+                                            <div><strong>Backlogs:</strong> <span th:text="${studentsMap[app.studentId].backlogs}">0</span></div>
+                                            <div><strong>Placed:</strong> <span th:text="${studentsMap[app.studentId].placed ? 'Yes' : 'No'}">No</span></div>
+                                        </div>
+                                        <div style="margin-bottom: 12px;">
+                                            <div style="font-size: 12px; font-weight: 600; color: var(--text-tertiary); margin-bottom: 4px;">SKILLS</div>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                                                <span th:each="sk : ${studentsMap[app.studentId].skills}" class="notion-tag gray" style="font-size: 11px;" th:text="${sk}">Skill</span>
+                                            </div>
+                                        </div>
+                                        <div th:if="${studentsMap[app.studentId].resumeFileId != null}" style="margin-top: 14px;">
+                                            <a th:href="@{/company/students/{id}/resume(id=${app.studentId})}" class="notion-btn notion-btn-secondary notion-btn-sm" target="_blank">
+                                                <i class="bi bi-download"></i> Download Resume PDF
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                                        <button type="button" class="notion-btn notion-btn-secondary notion-btn-sm" onclick="this.closest('dialog').close()">Close</button>
+                                    </div>
+                                </dialog>
+
+                                <!-- Native HTML5 Dialog: Schedule Round -->
+                                <dialog th:id="'scheduleDialog-' + ${app.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); background: #FFFFFF; text-align: left;">
+                                    <form th:action="@{/company/applications/{id}/rounds(id=${app.id})}" method="post">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="jobId" th:value="${job.id}">
+                                        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+
+                                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Schedule Interview</h3>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Round Number</label>
+                                            <input type="number" name="roundNumber" class="notion-input" th:value="${#lists.size(app.rounds) + 1}" min="1" required>
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Round Name</label>
+                                            <input type="text" name="name" class="notion-input" placeholder="e.g. Technical Round 1" required>
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Scheduled Date &amp; Time (Asia/Kolkata)</label>
+                                            <input type="datetime-local" name="scheduledAt" class="notion-input" required>
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Notes &amp; Instructions (or Meeting Link)</label>
+                                            <textarea name="notes" class="notion-textarea" rows="2" placeholder="e.g. Join Google Meet / Room 302..."></textarea>
+                                        </div>
+                                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                            <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                                            <button type="submit" class="notion-btn notion-btn-primary">Schedule &amp; Send .ics Invite</button>
+                                        </div>
+                                    </form>
+                                </dialog>
+
+                                <!-- Native HTML5 Dialog: Result -->
+                                <dialog th:if="${not #lists.isEmpty(app.rounds)}" th:id="'resultDialog-' + ${app.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); background: #FFFFFF; text-align: left;">
+                                    <form th:action="@{/company/applications/{id}/round-result(id=${app.id})}" method="post">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="jobId" th:value="${job.id}">
+                                        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+
+                                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Record Interview Result</h3>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Select Round</label>
+                                            <select name="roundNumber" class="notion-select" required>
+                                                <option th:each="r : ${app.rounds}" th:value="${r.roundNumber}" th:text="'Round ' + ${r.roundNumber} + ': ' + ${r.name}"></option>
+                                            </select>
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Result *</label>
+                                            <select name="result" class="notion-select" required>
+                                                <option value="CLEARED">CLEARED (Candidate Advances)</option>
+                                                <option value="FAILED">FAILED (Candidate Rejected)</option>
+                                                <option value="PENDING">PENDING</option>
+                                            </select>
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Score (Optional, 0-100)</label>
+                                            <input type="number" step="0.5" min="0" max="100" name="score" class="notion-input" placeholder="e.g. 85.5">
+                                        </div>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Feedback &amp; Notes</label>
+                                            <textarea name="feedback" class="notion-textarea" rows="2" placeholder="Candidate showed strong system design skills..."></textarea>
+                                        </div>
+                                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                            <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                                            <button type="submit" class="notion-btn notion-btn-primary">Save Result &amp; Notify</button>
+                                        </div>
+                                    </form>
+                                </dialog>
+
+                                <!-- Native HTML5 Dialog: Extend Offer -->
+                                <dialog th:id="'offerDialog-' + ${app.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 420px; width: 100%; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); background: #FFFFFF; text-align: left;">
+                                    <form th:action="@{/company/applications/{id}/offer(id=${app.id})}" method="post">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="jobId" th:value="${job.id}">
+                                        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+
+                                        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Extend Placement Offer</h3>
+                                        <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 12px;">
+                                            Candidate will be marked as <strong>PLACED</strong> and sent an offer notification email.
+                                        </p>
+                                        <div class="notion-form-group">
+                                            <label class="notion-label">Offered Package (LPA) *</label>
+                                            <input type="number" step="0.1" min="0.1" name="offerLpa" class="notion-input" th:value="${job.packageLpa}" required>
+                                        </div>
+                                        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                            <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                                            <button type="submit" class="notion-btn notion-btn-primary" style="background:#16A34A; border-color:#16A34A;">Confirm &amp; Extend Offer</button>
+                                        </div>
+                                    </form>
+                                </dialog>
+
+                                <!-- Native HTML5 Dialog: Reject Confirmation -->
+                                <dialog th:id="'rejectDialog-' + ${app.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 400px; width: 100%; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); background: #FFFFFF; text-align: left;">
+                                    <form th:action="@{/company/applications/{id}/reject(id=${app.id})}" method="post">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                        <input type="hidden" name="jobId" th:value="${job.id}">
+                                        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+
+                                        <h3 style="font-size: 16px; font-weight: 600; color: #DC2626; margin-bottom: 8px;">Reject Applicant</h3>
+                                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                                            Are you sure you want to reject this applicant? This status transition is final.
+                                        </p>
+                                        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                                            <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                                            <button type="submit" class="notion-btn notion-btn-primary" style="background: #DC2626; border-color: #DC2626;">Confirm Reject</button>
+                                        </div>
+                                    </form>
+                                </dialog>
+
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(applicants)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-people"></i></div>
+                    <div class="notion-empty-title">No applicants in this category</div>
+                    <div class="notion-empty-subtitle">Applicants matching this filter will be listed here.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<!-- Sticky Batch Action Bar (Appears when >= 1 checkbox checked) -->
+<div id="batchStickyBar" class="batch-sticky-bar">
+    <div>
+        <span id="selectedCountBadge" class="count-badge">0</span>
+        <span style="font-weight: 500; font-size: 13.5px; margin-left: 6px;">selected</span>
+    </div>
+
+    <!-- Batch Shortlist Form -->
+    <form id="batchShortlistForm" th:action="@{/company/jobs/{id}/applicants/batch-status(id=${job.id})}" method="post" style="margin: 0;">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="status" value="SHORTLISTED">
+        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+        <div id="batchShortlistInputs"></div>
+        <button type="submit" class="action-cell-btn secondary" style="background: white; color: #0F172A;">
+            <i class="bi bi-check-lg"></i> Shortlist Selected
+        </button>
+    </form>
+
+    <!-- Batch Schedule Interview Button (Opens Schedule Modal) -->
+    <button type="button" class="action-cell-btn primary" onclick="openBatchScheduleModal()">
+        <i class="bi bi-calendar-plus"></i> Schedule Interview for Selected
+    </button>
+
+    <!-- Batch Reject Form -->
+    <form id="batchRejectForm" th:action="@{/company/jobs/{id}/applicants/batch-status(id=${job.id})}" method="post" style="margin: 0;"
+          onsubmit="return confirm('Are you sure you want to reject the selected applicants?');">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="status" value="REJECTED">
+        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+        <div id="batchRejectInputs"></div>
+        <button type="submit" class="action-cell-btn danger" style="background: #7F1D1D; color: #FECACA; border-color: #991B1B;">
+            <i class="bi bi-x-lg"></i> Reject Selected
+        </button>
+    </form>
+</div>
+
+<!-- Batch Schedule Modal -->
+<dialog id="batchScheduleModal" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 620px; width: 100%; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); background: #FFFFFF; text-align: left;">
+    <form th:action="@{/company/jobs/{id}/applicants/batch-schedule(id=${job.id})}" method="post" id="batchScheduleForm">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="currentFilter" th:value="${statusFilter}">
+        <div id="batchScheduleHiddenIds"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px;">
+            <h3 style="font-size: 18px; font-weight: 600; margin: 0;">Schedule Interviews for Selected Students</h3>
+            <button type="button" class="notion-btn notion-btn-ghost notion-btn-sm" onclick="this.closest('dialog').close()"><i class="bi bi-x-lg"></i></button>
+        </div>
+
+        <div style="background: #EFF6FF; border-left: 3px solid #3B82F6; padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 16px; color: #1E3A8A;">
+            Scheduling for <strong id="modalCandidateCount">0</strong> selected candidates. Conflict detection will verify student and interviewer availability.
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="notion-form-group">
+                <label class="notion-label">Round Number *</label>
+                <input type="number" name="roundNumber" class="notion-input" value="1" min="1" required>
+            </div>
+            <div class="notion-form-group">
+                <label class="notion-label">Round Type *</label>
+                <select name="roundType" class="notion-select" required>
+                    <option value="Technical" selected>Technical</option>
+                    <option value="Aptitude">Aptitude</option>
+                    <option value="HR">HR Interview</option>
+                    <option value="Group Discussion">Group Discussion</option>
+                    <option value="Custom">Custom</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="notion-form-group">
+            <label class="notion-label">Round Name *</label>
+            <input type="text" name="roundName" class="notion-input" placeholder="e.g. Technical Round 1 - Problem Solving" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div class="notion-form-group">
+                <label class="notion-label">Start Date &amp; Time (Asia/Kolkata) *</label>
+                <input type="datetime-local" name="startDateTime" id="modalStartDateTime" class="notion-input" required onchange="renderSchedulePreview()">
+            </div>
+            <div class="notion-form-group">
+                <label class="notion-label">Duration per Interview (Mins) *</label>
+                <input type="number" name="durationMinutes" id="modalDurationMinutes" class="notion-input" value="45" min="10" max="180" required onchange="renderSchedulePreview()">
+            </div>
+        </div>
+
+        <!-- Slot Mode: Same Slot or Auto-Slots -->
+        <div class="notion-form-group" style="background: var(--bg-secondary); padding: 12px; border-radius: 6px;">
+            <label class="notion-label" style="margin-bottom: 8px;">Interview Slot Mode:</label>
+            <div style="display: flex; gap: 20px; font-size: 13.5px;">
+                <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="slotMode" value="SAME_SLOT" checked onchange="toggleSlotMode(this.value)">
+                    Same Slot for All
+                </label>
+                <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                    <input type="radio" name="slotMode" value="AUTO_SLOTS" onchange="toggleSlotMode(this.value)">
+                    Auto-Slots (Sequential)
+                </label>
+            </div>
+
+            <!-- Break between slots (for auto-slots) -->
+            <div id="breakMinutesRow" style="display: none; margin-top: 10px;">
+                <label class="notion-label">Break between slots (Minutes):</label>
+                <input type="number" name="breakMinutes" id="modalBreakMinutes" class="notion-input" value="10" min="0" max="60" onchange="renderSchedulePreview()">
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 12px;">
+            <div class="notion-form-group">
+                <label class="notion-label">Mode *</label>
+                <select name="mode" class="notion-select" required>
+                    <option value="ONLINE" selected>ONLINE</option>
+                    <option value="OFFLINE">OFFLINE</option>
+                </select>
+            </div>
+            <div class="notion-form-group">
+                <label class="notion-label">Meeting Link / Room Venue</label>
+                <input type="text" name="venueOrLink" class="notion-input" placeholder="e.g. https://meet.google.com/xyz or Room 402">
+            </div>
+        </div>
+
+        <div class="notion-form-group">
+            <label class="notion-label">Panel Interviewer Names (Comma separated)</label>
+            <input type="text" name="panelNames" class="notion-input" placeholder="e.g. John Doe, Sarah Connor">
+        </div>
+
+        <div class="notion-form-group">
+            <label class="notion-label">Instructions for Candidates</label>
+            <textarea name="instructions" class="notion-textarea" rows="2" placeholder="e.g. Please be ready 5 minutes early with your ID card and code environment set up."></textarea>
+        </div>
+
+        <!-- Live Slot Preview Table -->
+        <div style="margin-top: 14px;">
+            <div style="font-size: 12px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; margin-bottom: 6px;">
+                Slot Schedule Preview
+            </div>
+            <div style="max-height: 160px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: 4px; font-size: 12.5px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="background: var(--bg-secondary); text-align: left;">
+                        <tr>
+                            <th style="padding: 6px 10px; border-bottom: 1px solid var(--border-light);">#</th>
+                            <th style="padding: 6px 10px; border-bottom: 1px solid var(--border-light);">Student</th>
+                            <th style="padding: 6px 10px; border-bottom: 1px solid var(--border-light);">Slot Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="slotPreviewTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+            <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+            <button type="submit" class="notion-btn notion-btn-primary">Confirm &amp; Dispatch Invites</button>
+        </div>
+    </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    function openDialog(id) {
+        if (!id) return;
+        const dialog = document.getElementById(id);
+        if (dialog) dialog.showModal();
+    }
+
+    function toggleSelectAll(masterCb) {
+        const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+        rowCheckboxes.forEach(cb => {
+            cb.checked = masterCb.checked;
+        });
+        updateSelectionState();
+    }
+
+    function getSelectedCheckboxes() {
+        return Array.from(document.querySelectorAll('.row-checkbox:checked'));
+    }
+
+    function updateSelectionState() {
+        const selected = getSelectedCheckboxes();
+        const bar = document.getElementById('batchStickyBar');
+        const badge = document.getElementById('selectedCountBadge');
+
+        if (selected.length > 0) {
+            badge.textContent = selected.length;
+            bar.style.display = 'flex';
+        } else {
+            bar.style.display = 'none';
+        }
+
+        // Sync hidden inputs for forms
+        syncBatchFormInputs('batchShortlistInputs', selected);
+        syncBatchFormInputs('batchRejectInputs', selected);
+    }
+
+    function syncBatchFormInputs(containerId, selectedCbs) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = '';
+        selectedCbs.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'applicationIds';
+            input.value = cb.value;
+            container.appendChild(input);
+        });
+    }
+
+    let selectedStudentsForModal = [];
+
+    function openBatchScheduleModal() {
+        const selected = getSelectedCheckboxes();
+        if (selected.length === 0) {
+            alert('Please select at least one student.');
+            return;
+        }
+
+        selectedStudentsForModal = selected.map(cb => ({
+            id: cb.value,
+            name: cb.getAttribute('data-student-name') || 'Student'
+        }));
+
+        document.getElementById('modalCandidateCount').textContent = selectedStudentsForModal.length;
+
+        // Set hidden inputs in schedule form
+        const container = document.getElementById('batchScheduleHiddenIds');
+        container.innerHTML = '';
+        selectedStudentsForModal.forEach(s => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'applicationIds';
+            input.value = s.id;
+            container.appendChild(input);
+        });
+
+        // Set default start time to tomorrow 10:00 AM if empty
+        const startInput = document.getElementById('modalStartDateTime');
+        if (!startInput.value) {
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(10, 0, 0, 0);
+            startInput.value = tomorrow.toISOString().slice(0, 16);
+        }
+
+        renderSchedulePreview();
+        openDialog('batchScheduleModal');
+    }
+
+    function toggleSlotMode(mode) {
+        const breakRow = document.getElementById('breakMinutesRow');
+        if (mode === 'AUTO_SLOTS') {
+            breakRow.style.display = 'block';
+        } else {
+            breakRow.style.display = 'none';
+        }
+        renderSchedulePreview();
+    }
+
+    function renderSchedulePreview() {
+        const tbody = document.getElementById('slotPreviewTableBody');
+        tbody.innerHTML = '';
+
+        const startVal = document.getElementById('modalStartDateTime').value;
+        const duration = parseInt(document.getElementById('modalDurationMinutes').value) || 45;
+        const breakMins = parseInt(document.getElementById('modalBreakMinutes').value) || 10;
+        const mode = document.querySelector('input[name="slotMode"]:checked')?.value || 'SAME_SLOT';
+
+        if (!startVal) {
+            tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; text-align: center; color: var(--text-tertiary);">Select start date & time to preview</td></tr>';
+            return;
+        }
+
+        let currentSlot = new Date(startVal);
+
+        selectedStudentsForModal.forEach((student, idx) => {
+            const startStr = currentSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + currentSlot.toLocaleDateString([], { month: 'short', day: 'numeric' });
+            const endSlot = new Date(currentSlot.getTime() + duration * 60000);
+            const endStr = endSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 6px 10px; border-bottom: 1px solid var(--border-light);">${idx + 1}</td>
+                <td style="padding: 6px 10px; border-bottom: 1px solid var(--border-light); font-weight: 500;">${student.name}</td>
+                <td style="padding: 6px 10px; border-bottom: 1px solid var(--border-light); color: #2563EB;">${startStr} - ${endStr}</td>
+            `;
+            tbody.appendChild(tr);
+
+            if (mode === 'AUTO_SLOTS') {
+                currentSlot = new Date(endSlot.getTime() + breakMins * 60000);
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>My Applications - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">📑</div>
+                <h1 class="notion-page-title">My Applications</h1>
+                <p class="notion-page-desc">Track real-time selection rounds, schedules, and interview progress.</p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div th:if="${not #lists.isEmpty(applications)}" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="notion-panel" th:each="app : ${applications}">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.5px;"
+                                 th:text="${companiesMap[app.companyId] != null ? companiesMap[app.companyId].name : 'Company'}">
+                                Company
+                            </div>
+                            <h2 style="font-size: 16px; font-weight: 600; margin: 2px 0 4px 0;"
+                                th:text="${jobsMap[app.jobId] != null ? jobsMap[app.jobId].title : 'Job Role'}">
+                                Software Developer
+                            </h2>
+                            <div style="font-size: 12px; color: var(--text-tertiary);">
+                                Applied on <span th:text="${#temporals.format(app.appliedAt, 'dd MMMM yyyy')}">Date</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span th:if="${app.status.name() == 'APPLIED'}" class="notion-tag gray">Applied</span>
+                            <span th:if="${app.status.name() == 'SHORTLISTED'}" class="notion-tag blue">Shortlisted</span>
+                            <span th:if="${app.status.name() == 'IN_PROGRESS'}" class="notion-tag yellow">In Progress</span>
+                            <span th:if="${app.status.name() == 'OFFERED'}" class="notion-tag green">Offered (<span th:text="${app.offerLpa}">12</span> LPA)</span>
+                            <span th:if="${app.status.name() == 'REJECTED'}" class="notion-tag red">Not Selected</span>
+                        </div>
+                    </div>
+
+                    <!-- Interview Rounds Timeline -->
+                    <div style="margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 16px;">
+                        <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.5px; margin-bottom: 12px;">
+                            Interview Timeline
+                        </div>
+
+                        <div class="notion-timeline" th:if="${not #lists.isEmpty(app.rounds)}">
+                            <div class="notion-timeline-step"
+                                 th:each="round : ${app.rounds}"
+                                 th:classappend="${round.result.name() == 'CLEARED' ? 'cleared' : (round.result.name() == 'FAILED' ? 'failed' : 'pending')}">
+                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 13.5px;">
+                                            Round <span th:text="${round.roundNumber}">1</span>: <span th:text="${round.name}">Coding Assessment</span>
+                                        </div>
+                                        <div style="font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                            <i class="bi bi-calendar3" style="font-size: 11px;"></i>
+                                            Scheduled: <span th:text="${#temporals.format(round.scheduledAt, 'dd MMM yyyy, hh:mm a')}">Date</span>
+                                        </div>
+                                        <div th:if="${round.notes != null && !round.notes.isBlank()}"
+                                             style="font-size: 12.5px; color: var(--text-secondary); background: var(--bg-secondary); padding: 6px 10px; border-radius: var(--radius-sm); margin-top: 6px;">
+                                            <span th:text="${round.notes}">Notes</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span th:if="${round.result.name() == 'PENDING'}" class="notion-tag yellow">Pending</span>
+                                        <span th:if="${round.result.name() == 'CLEARED'}" class="notion-tag green">Cleared</span>
+                                        <span th:if="${round.result.name() == 'FAILED'}" class="notion-tag red">Failed</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div th:if="${#lists.isEmpty(app.rounds)}" style="font-size: 13px; color: var(--text-tertiary);">
+                            No rounds scheduled yet. You will be notified when the recruiter schedules an assessment or interview.
+                        </div>
+
+                        <!-- Offer callout banner if offered -->
+                        <div th:if="${app.status.name() == 'OFFERED'}" class="notion-callout success" style="margin-top: 16px; margin-bottom: 0;">
+                            <div class="notion-callout-icon"><i class="bi bi-award"></i></div>
+                            <div class="notion-callout-text">
+                                <strong>Official Placement Offer Extended:</strong> <span th:text="${companiesMap[app.companyId] != null ? companiesMap[app.companyId].name : 'Company'}">Company</span> has extended an official offer of <strong th:text="${app.offerLpa}">12.0</strong> LPA.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(applications)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-file-earmark-text"></i></div>
+                    <div class="notion-empty-title">No applications yet</div>
+                    <div class="notion-empty-subtitle">When you apply for eligible jobs, track your selection rounds here.</div>
+                    <a th:href="@{/student/jobs}" class="notion-btn notion-btn-primary notion-btn-sm">Browse jobs</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

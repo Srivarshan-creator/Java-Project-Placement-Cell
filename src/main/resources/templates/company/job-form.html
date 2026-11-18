@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${isEdit} ? 'Edit Job Opening' : 'Post New Job' + ' - Company Portal'">Job Form</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <a th:href="@{/company/jobs}" class="notion-btn notion-btn-ghost notion-btn-sm" style="margin-bottom: 16px; padding-left: 0;">
+                <i class="bi bi-arrow-left"></i> Back to My Jobs
+            </a>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div class="notion-page-header">
+                <div class="notion-page-icon">✍️</div>
+                <h1 class="notion-page-title" th:text="${isEdit} ? 'Edit Job Opening' : 'Post New Job'">Job Details</h1>
+                <p class="notion-page-desc" th:if="${isEdit}">Note: Editing resets the approval status to Under Review for placement cell verification.</p>
+                <p class="notion-page-desc" th:unless="${isEdit}">Specify role criteria, packages, and application deadlines.</p>
+            </div>
+
+            <div class="notion-panel">
+                <form th:action="${isEdit} ? @{/company/jobs/edit/{id}(id=${job.id})} : @{/company/jobs/new}" th:object="${jobDto}" method="post">
+                    <div class="notion-form-group">
+                        <label for="title" class="notion-label">Job Title / Role</label>
+                        <input type="text" class="notion-input" th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'" id="title" th:field="*{title}" placeholder="e.g. Associate Software Engineer">
+                        <div class="notion-error" th:errors="*{title}"></div>
+                    </div>
+
+                    <div class="notion-form-group">
+                        <label for="description" class="notion-label">Role Description &amp; Responsibilities</label>
+                        <textarea class="notion-textarea" th:classappend="${#fields.hasErrors('description')} ? 'is-invalid'" id="description" th:field="*{description}" rows="6" placeholder="Details about team, day-to-day work, requirements, and tech stack..."></textarea>
+                        <div class="notion-error" th:errors="*{description}"></div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                        <div class="notion-form-group">
+                            <label for="packageLpa" class="notion-label">Package (LPA)</label>
+                            <input type="number" step="0.1" min="0.1" class="notion-input" th:classappend="${#fields.hasErrors('packageLpa')} ? 'is-invalid'" id="packageLpa" th:field="*{packageLpa}" placeholder="12.0">
+                            <div class="notion-error" th:errors="*{packageLpa}"></div>
+                        </div>
+
+                        <div class="notion-form-group">
+                            <label for="minCgpa" class="notion-label">Min CGPA</label>
+                            <input type="number" step="0.01" min="0" max="10" class="notion-input" th:classappend="${#fields.hasErrors('minCgpa')} ? 'is-invalid'" id="minCgpa" th:field="*{minCgpa}" placeholder="7.0">
+                            <div class="notion-error" th:errors="*{minCgpa}"></div>
+                        </div>
+
+                        <div class="notion-form-group">
+                            <label for="maxBacklogs" class="notion-label">Max Backlogs</label>
+                            <input type="number" min="0" class="notion-input" th:classappend="${#fields.hasErrors('maxBacklogs')} ? 'is-invalid'" id="maxBacklogs" th:field="*{maxBacklogs}" placeholder="0">
+                            <div class="notion-error" th:errors="*{maxBacklogs}"></div>
+                        </div>
+                    </div>
+
+                    <div class="notion-form-group">
+                        <label class="notion-label">Eligible Departments</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 12px; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
+                            <label th:each="b : ${branches}" style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; cursor: pointer;">
+                                <input type="checkbox" th:field="*{allowedBranches}" th:value="${b}">
+                                <span th:text="${b}">CSE</span>
+                            </label>
+                        </div>
+                        <div class="notion-error" th:if="${#fields.hasErrors('allowedBranches')}" th:errors="*{allowedBranches}"></div>
+                    </div>
+
+                    <div class="notion-form-group">
+                        <label for="deadline" class="notion-label">Application Deadline</label>
+                        <input type="date" class="notion-input" th:classappend="${#fields.hasErrors('deadline')} ? 'is-invalid'" id="deadline" th:field="*{deadline}" style="max-width: 240px;">
+                        <div class="notion-error" th:errors="*{deadline}"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
+                        <a th:href="@{/company/jobs}" class="notion-btn notion-btn-ghost">Cancel</a>
+                        <button type="submit" class="notion-btn notion-btn-primary">
+                            <span th:text="${isEdit} ? 'Update and resubmit' : 'Submit for approval'">Submit</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

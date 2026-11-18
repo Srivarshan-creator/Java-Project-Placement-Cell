@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Onboard Company - Placement Cell</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <a th:href="@{/admin/companies}" class="notion-btn notion-btn-ghost notion-btn-sm" style="margin-bottom: 16px; padding-left: 0;">
+                <i class="bi bi-arrow-left"></i> Back to Companies
+            </a>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div class="notion-page-header">
+                <div class="notion-page-icon">🏢</div>
+                <h1 class="notion-page-title">Register Company Account</h1>
+                <p class="notion-page-desc">A temporary password will be generated and dispatched automatically via email.</p>
+            </div>
+
+            <div class="notion-panel">
+                <form th:action="@{/admin/companies/new}" th:object="${companyDto}" method="post">
+                    <div class="notion-form-group">
+                        <label for="name" class="notion-label">Company Name</label>
+                        <input type="text" class="notion-input" th:classappend="${#fields.hasErrors('name')} ? 'is-invalid'" id="name" th:field="*{name}" placeholder="e.g. Acme Technologies">
+                        <div class="notion-error" th:errors="*{name}"></div>
+                    </div>
+
+                    <div class="notion-form-group">
+                        <label for="contactEmail" class="notion-label">Contact Email (Account Login)</label>
+                        <input type="email" class="notion-input" th:classappend="${#fields.hasErrors('contactEmail')} ? 'is-invalid'" id="contactEmail" th:field="*{contactEmail}" placeholder="campus@acme.com">
+                        <div class="notion-hint">Credentials and job notices will be delivered to this email.</div>
+                        <div class="notion-error" th:errors="*{contactEmail}"></div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px;">
+                        <a th:href="@{/admin/companies}" class="notion-btn notion-btn-ghost">Cancel</a>
+                        <button type="submit" class="notion-btn notion-btn-primary">
+                            Create &amp; Dispatch Credentials
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

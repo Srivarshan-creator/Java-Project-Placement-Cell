@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Job Postings - Company Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content wide">
+            <div class="notion-page-header" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div class="notion-page-icon">💼</div>
+                    <h1 class="notion-page-title">Job Postings</h1>
+                    <p class="notion-page-desc">Manage openings, review applicants, and track review status.</p>
+                </div>
+                <div>
+                    <a th:href="@{/company/jobs/new}" class="notion-btn notion-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Post new job
+                    </a>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(jobs)}">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th>Role Title</th>
+                            <th>Package</th>
+                            <th>Eligibility Criteria</th>
+                            <th>Review Status</th>
+                            <th>Deadline</th>
+                            <th>Applicants</th>
+                            <th style="text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="job : ${jobs}">
+                            <td>
+                                <div style="font-weight: 600; color: var(--text-primary);" th:text="${job.title}">Software Engineer</div>
+                                <div style="font-size: 11px; color: var(--text-tertiary);" th:text="'Created ' + ${#temporals.format(job.createdAt, 'dd MMM yyyy')}">Date</div>
+                            </td>
+                            <td>
+                                <span class="notion-tag green" th:text="${job.packageLpa} + ' LPA'">12.0 LPA</span>
+                            </td>
+                            <td style="font-size: 12.5px;">
+                                <div>CGPA &ge; <span th:text="${job.minCgpa}">7.0</span> • Max Backlogs: <span th:text="${job.maxBacklogs}">0</span></div>
+                                <div style="margin-top: 3px;">
+                                    <span th:each="b : ${job.allowedBranches}" class="notion-tag gray" style="margin-right: 3px; font-size: 11px;" th:text="${b}">CSE</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span th:if="${job.status.name() == 'PENDING'}" class="notion-tag yellow">Under Review</span>
+                                <span th:if="${job.status.name() == 'APPROVED'}" class="notion-tag green">Approved</span>
+                                <span th:if="${job.status.name() == 'REJECTED'}" class="notion-tag red">Rejected</span>
+                                <span th:if="${job.status.name() == 'CLOSED'}" class="notion-tag gray">Closed</span>
+
+                                <div th:if="${job.status.name() == 'REJECTED' && job.rejectionReason != null}"
+                                     style="font-size: 11px; color: var(--tag-red-text); margin-top: 4px;">
+                                    Feedback: <span th:text="${job.rejectionReason}">Reason</span>
+                                </div>
+                            </td>
+                            <td style="color: var(--text-secondary);" th:text="${#temporals.format(job.deadline, 'dd MMM yyyy')}">Date</td>
+                            <td>
+                                <a th:href="@{/company/jobs/{id}/applicants(id=${job.id})}" class="notion-btn notion-btn-ghost notion-btn-sm">
+                                    <i class="bi bi-people"></i>
+                                    <span th:text="${applicantCounts[job.id]} ?: 0">0</span> applicants
+                                </a>
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                                    <a th:href="@{/company/jobs/edit/{id}(id=${job.id})}" class="notion-btn notion-btn-ghost notion-btn-sm" title="Edit Job">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form th:if="${job.status.name() != 'CLOSED'}" th:action="@{/company/jobs/{id}/close(id=${job.id})}" method="post" style="margin: 0;">
+                                        <button type="submit" class="notion-btn notion-btn-ghost notion-btn-sm" title="Close Job" onclick="return confirm('Close this job opening?')">
+                                            <i class="bi bi-lock"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(jobs)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-briefcase"></i></div>
+                    <div class="notion-empty-title">No job openings created</div>
+                    <div class="notion-empty-subtitle">Post a job description with eligibility criteria to recruit candidates.</div>
+                    <a th:href="@{/company/jobs/new}" class="notion-btn notion-btn-primary notion-btn-sm">Post new job</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

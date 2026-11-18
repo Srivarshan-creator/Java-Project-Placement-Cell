@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Server Error - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body style="background-color: var(--bg-primary); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px;">
+
+<div style="max-width: 420px; width: 100%; text-align: center;">
+    <div style="font-size: 32px; margin-bottom: 12px;">⚠️</div>
+    <h1 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">Something went wrong</h1>
+    <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px;" th:text="${message} ?: 'An unexpected error occurred while processing your request.'">
+        An unexpected error occurred.
+    </p>
+    <a href="/" class="notion-btn notion-btn-secondary">
+        <i class="bi bi-arrow-left"></i> Return to workspace
+    </a>
+</div>
+
+</body>
+</html>

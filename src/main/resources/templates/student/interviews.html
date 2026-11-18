@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>My Interviews - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">📅</div>
+                <h1 class="notion-page-title">My Interviews</h1>
+                <p class="notion-page-desc">View scheduled rounds, confirm attendance, or request a reschedule.</p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Interviews List -->
+            <div th:if="${not #lists.isEmpty(interviews)}" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="notion-panel" th:each="interview : ${interviews}">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                        <div>
+                            <div style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-tertiary); letter-spacing: 0.5px;"
+                                 th:text="${companiesMap[interview.companyId] != null ? companiesMap[interview.companyId].name : 'Company'}">
+                                Company
+                            </div>
+                            <h2 style="font-size: 17px; font-weight: 600; margin: 3px 0;"
+                                th:text="${jobsMap[interview.jobId] != null ? jobsMap[interview.jobId].title : 'Job Role'}">
+                                Job Role
+                            </h2>
+                            <div style="font-size: 13.5px; font-weight: 500; color: var(--text-primary); margin-top: 4px;">
+                                <span class="notion-tag blue" th:text="${interview.roundType} ?: 'Technical'">Technical</span>
+                                <span style="margin-left: 6px;" th:text="${interview.roundName}">Round 1: Online Coding</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <span th:if="${interview.status != null && interview.status.name() == 'SCHEDULED'}" class="notion-tag yellow">
+                                <i class="bi bi-clock"></i> Scheduled
+                            </span>
+                            <span th:if="${interview.status != null && interview.status.name() == 'CONFIRMED'}" class="notion-tag green">
+                                <i class="bi bi-check-circle"></i> Confirmed
+                            </span>
+                            <span th:if="${interview.status != null && interview.status.name() == 'RESCHEDULE_REQUESTED'}" class="notion-tag orange">
+                                <i class="bi bi-arrow-repeat"></i> Reschedule Requested
+                            </span>
+                            <span th:if="${interview.status != null && interview.status.name() == 'COMPLETED'}" class="notion-tag green">
+                                <i class="bi bi-check-all"></i> Completed
+                            </span>
+                            <span th:if="${interview.status != null && interview.status.name() == 'CANCELLED'}" class="notion-tag red">
+                                <i class="bi bi-x-circle"></i> Cancelled
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Details Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg-secondary); padding: 12px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 14px;">
+                        <div>
+                            <span style="color: var(--text-tertiary); display: block; font-size: 11.5px;">Date &amp; Time:</span>
+                            <strong th:text="${#temporals.format(interview.startDateTime, 'dd MMM yyyy, hh:mm a')}">Date Time</strong>
+                            <span style="color: var(--text-tertiary); font-size: 12px;" th:text="' (' + ${interview.durationMinutes} + ' mins)'"> (45 mins)</span>
+                        </div>
+                        <div>
+                            <span style="color: var(--text-tertiary); display: block; font-size: 11.5px;">Mode &amp; Location / Link:</span>
+                            <strong th:text="${interview.mode} ?: 'ONLINE'">ONLINE</strong> -
+                            <span th:if="${interview.venueOrLink != null}" th:text="${interview.venueOrLink}">Google Meet</span>
+                        </div>
+                        <div th:if="${not #lists.isEmpty(interview.panelMembers)}">
+                            <span style="color: var(--text-tertiary); display: block; font-size: 11.5px;">Interviewers / Panel:</span>
+                            <span th:text="${#strings.listJoin(interview.panelMembers, ', ')}">Panel Members</span>
+                        </div>
+                    </div>
+
+                    <div th:if="${interview.instructions != null && !interview.instructions.isBlank()}" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; background: #FFFBEB; border-left: 3px solid #F59E0B; padding: 8px 12px; border-radius: 4px;">
+                        <strong>Instructions:</strong> <span th:text="${interview.instructions}">Instructions</span>
+                    </div>
+
+                    <div th:if="${interview.rescheduleReason != null && !interview.rescheduleReason.isBlank()}" style="font-size: 12.5px; color: var(--text-tertiary); margin-bottom: 12px;">
+                        <em>Your requested reason: "<span th:text="${interview.rescheduleReason}">reason</span>"</em>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border-light); padding-top: 12px;">
+                        <!-- Confirm Attendance Form -->
+                        <form th:if="${interview.status == null || interview.status.name() == 'SCHEDULED' || interview.studentConfirmation == 'PENDING'}"
+                              th:action="@{/student/interviews/{id}/confirm(id=${interview.id})}" method="post" style="margin: 0;">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <button type="submit" class="notion-btn notion-btn-primary notion-btn-sm">
+                                <i class="bi bi-check2"></i> Confirm Attendance
+                            </button>
+                        </form>
+
+                        <!-- Request Reschedule Trigger -->
+                        <button th:if="${interview.status == null || interview.status.name() != 'COMPLETED' && interview.status.name() != 'CANCELLED'}"
+                                type="button" class="notion-btn notion-btn-ghost notion-btn-sm"
+                                th:attr="data-dialog-id='rescheduleDialog-' + ${interview.id}"
+                                onclick="openDialog(this.getAttribute('data-dialog-id'))">
+                            <i class="bi bi-clock-history"></i> Request Reschedule
+                        </button>
+                    </div>
+
+                    <!-- Reschedule Native Dialog -->
+                    <dialog th:id="'rescheduleDialog-' + ${interview.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); background: #FFFFFF;">
+                        <form th:action="@{/student/interviews/{id}/reschedule-request(id=${interview.id})}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Request Interview Reschedule</h3>
+                            <p style="font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px;">
+                                Provide a reason for requesting a change and optionally your preferred alternate date/time. The recruiter will review your request.
+                            </p>
+                            <div class="notion-form-group">
+                                <label class="notion-label">Reason for Reschedule *</label>
+                                <textarea name="reason" class="notion-textarea" rows="3" placeholder="e.g. Clashing university exam or medical emergency..." required></textarea>
+                            </div>
+                            <div class="notion-form-group">
+                                <label class="notion-label">Preferred Date &amp; Time (Optional)</label>
+                                <input type="datetime-local" name="preferredTime" class="notion-input">
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                <button type="button" class="notion-btn notion-btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+                                <button type="submit" class="notion-btn notion-btn-primary">Submit Request</button>
+                            </div>
+                        </form>
+                    </dialog>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(interviews)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-calendar-event"></i></div>
+                    <div class="notion-empty-title">No interviews scheduled yet</div>
+                    <div class="notion-empty-subtitle">When recruiters shortlist you and schedule interview rounds, they will appear here.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    function openDialog(id) {
+        const dialog = document.getElementById(id);
+        if (dialog) dialog.showModal();
+    }
+</script>
+</body>
+</html>
+

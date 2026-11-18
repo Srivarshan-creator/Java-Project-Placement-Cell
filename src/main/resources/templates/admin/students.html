@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Students Directory - Placement Cell</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content wide">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">🎓</div>
+                <h1 class="notion-page-title">Students Directory</h1>
+                <p class="notion-page-desc">Complete academic standing and placement records across departments.</p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Filters -->
+            <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+                <form method="get" th:action="@{/admin/students}" style="display: flex; gap: 8px; align-items: center; margin: 0; flex-wrap: wrap;">
+                    <select name="branch" class="notion-select" style="width: auto; padding: 4px 8px;" onchange="this.form.submit()">
+                        <option value="">All Branches</option>
+                        <option th:each="b : ${branches}" th:value="${b}" th:text="${b}" th:selected="${b == branchFilter}"></option>
+                    </select>
+
+                    <select name="placed" class="notion-select" style="width: auto; padding: 4px 8px;" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="true" th:selected="${placedFilter == true}">Placed Only</option>
+                        <option value="false" th:selected="${placedFilter == false}">Unplaced Only</option>
+                    </select>
+
+                    <a th:if="${(branchFilter != null && branchFilter != '') || placedFilter != null}"
+                       th:href="@{/admin/students}" class="notion-btn notion-btn-ghost notion-btn-sm">
+                        Reset filters
+                    </a>
+                </form>
+            </div>
+
+            <!-- Table -->
+            <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(students)}">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Branch</th>
+                            <th>CGPA</th>
+                            <th>Backlogs</th>
+                            <th>Skills</th>
+                            <th>Resume</th>
+                            <th>Placement</th>
+                            <th>Package</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="s : ${students}">
+                            <td style="font-weight: 600;" th:text="${s.name}">Student Name</td>
+                            <td><span class="notion-tag blue" th:text="${s.branch}">CSE</span></td>
+                            <td th:text="${s.cgpa}">8.5</td>
+                            <td>
+                                <span th:if="${s.backlogs == 0}" class="notion-tag green">0</span>
+                                <span th:unless="${s.backlogs == 0}" class="notion-tag red" th:text="${s.backlogs}">1</span>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-wrap: wrap; gap: 3px; max-width: 220px;">
+                                    <span th:each="sk : ${s.skills}" class="notion-tag gray" style="font-size: 11px;" th:text="${sk}">Skill</span>
+                                </div>
+                            </td>
+                            <td>
+                                <a th:if="${s.resumeFileId != null}" th:href="@{/admin/students/{id}/resume(id=${s.id})}" class="notion-btn notion-btn-ghost notion-btn-sm" target="_blank" title="Download PDF Resume">
+                                    <i class="bi bi-file-earmark-pdf" style="color: var(--tag-red-text);"></i> PDF
+                                </a>
+                                <span th:unless="${s.resumeFileId != null}" style="color: var(--text-tertiary); font-size: 12px;">None</span>
+                            </td>
+                            <td>
+                                <span th:if="${s.placed}" class="notion-tag green">Placed</span>
+                                <span th:unless="${s.placed}" class="notion-tag gray">Seeking</span>
+                            </td>
+                            <td>
+                                <span th:if="${s.placed && s.offerLpa != null}" class="notion-tag green" style="font-weight: 600;" th:text="${s.offerLpa} + ' LPA'">12.0 LPA</span>
+                                <span th:unless="${s.placed && s.offerLpa != null}" style="color: var(--text-tertiary);">-</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="notion-panel" th:if="${#lists.isEmpty(students)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-people"></i></div>
+                    <div class="notion-empty-title">No students found</div>
+                    <div class="notion-empty-subtitle">Try adjusting your branch or placement filter options.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

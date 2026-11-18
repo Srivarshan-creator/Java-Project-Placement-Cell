@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Pending Job Approvals - Placement Cell</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content wide">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">⏳</div>
+                <h1 class="notion-page-title">Pending Job Approvals</h1>
+                <p class="notion-page-desc">Review submitted job postings before publishing them to eligible students.</p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div th:if="${not #lists.isEmpty(jobs)}" style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="notion-panel" th:each="job : ${jobs}">
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                        <div>
+                            <span class="notion-tag blue" th:text="${companiesMap[job.companyId] != null ? companiesMap[job.companyId].name : 'Company'}">Company</span>
+                            <h2 style="font-size: 16px; font-weight: 600; margin: 4px 0 2px 0;" th:text="${job.title}">Job Title</h2>
+                            <span class="notion-tag green" style="font-weight: 600;" th:text="${job.packageLpa} + ' LPA'">10.0 LPA</span>
+                        </div>
+                        <div>
+                            <span class="notion-tag yellow">Awaiting Review</span>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 13.5px; color: var(--text-primary); line-height: 1.55; margin-bottom: 14px;" th:text="${job.description}">
+                        Job Description
+                    </p>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--text-secondary); padding: 10px; background: var(--bg-secondary); border-radius: var(--radius-sm); margin-bottom: 16px;">
+                        <div>Min CGPA: <strong style="color: var(--text-primary);" th:text="${job.minCgpa}">7.0</strong></div>
+                        <div>Max Backlogs: <strong style="color: var(--text-primary);" th:text="${job.maxBacklogs}">0</strong></div>
+                        <div>Deadline: <strong style="color: var(--text-primary);" th:text="${#temporals.format(job.deadline, 'dd MMM yyyy')}">Date</strong></div>
+                        <div>
+                            Branches:
+                            <span th:each="b : ${job.allowedBranches}" class="notion-tag gray" style="margin-right: 2px;" th:text="${b}">CSE</span>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <!-- Approve Form -->
+                        <form th:action="@{/admin/jobs/approve/{id}(id=${job.id})}" method="post" style="margin: 0;">
+                            <button type="submit" class="notion-btn notion-btn-primary notion-btn-sm" onclick="return confirm('Approve job? Eligible candidates will be notified.')">
+                                <i class="bi bi-check2"></i> Approve
+                            </button>
+                        </form>
+
+                        <!-- Reject Trigger -->
+                        <button type="button" class="notion-btn notion-btn-danger notion-btn-sm"
+                                th:onclick="'openDialog(\'rejectDialog-' + ${job.id} + '\')'">
+                            <i class="bi bi-x"></i> Reject...
+                        </button>
+                    </div>
+
+                    <!-- Native Dialog for Rejection Reason -->
+                    <dialog th:id="'rejectDialog-' + ${job.id}" style="border: 1px solid var(--border-light); border-radius: var(--radius-md); max-width: 440px; width: 100%; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); background: #FFFFFF;">
+                        <form th:action="@{/admin/jobs/reject/{id}(id=${job.id})}" th:object="${rejectDto}" method="post">
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--tag-red-text);">Reject Job Posting</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Provide a specific reason. This explanation will be dispatched directly to the recruiter.</p>
+                            <div class="notion-form-group">
+                                <label class="notion-label">Reason for Rejection</label>
+                                <textarea name="reason" class="notion-textarea" rows="3" placeholder="e.g. Compensation below minimum threshold, or incomplete requirements..." required></textarea>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                                <button type="button" class="notion-btn notion-btn-ghost" th:onclick="'closeDialog(\'rejectDialog-' + ${job.id} + '\')'">Cancel</button>
+                                <button type="submit" class="notion-btn notion-btn-danger">Confirm Rejection</button>
+                            </div>
+                        </form>
+                    </dialog>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="notion-panel" th:if="${#lists.isEmpty(jobs)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-check2-circle"></i></div>
+                    <div class="notion-empty-title">All jobs reviewed</div>
+                    <div class="notion-empty-subtitle">There are no pending submissions awaiting placement cell authorization.</div>
+                    <a th:href="@{/admin/dashboard}" class="notion-btn notion-btn-secondary notion-btn-sm">Return to Analytics</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+<script>
+    function openDialog(id) {
+        const dialog = document.getElementById(id);
+        if (dialog) dialog.showModal();
+    }
+    function closeDialog(id) {
+        const dialog = document.getElementById(id);
+        if (dialog) dialog.close();
+    }
+</script>
+</body>
+</html>

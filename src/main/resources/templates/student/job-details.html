@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title th:text="${job.title} + ' - Placement Portal'">Job Details</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <a th:href="@{/student/jobs}" class="notion-btn notion-btn-ghost notion-btn-sm" style="margin-bottom: 16px; padding-left: 0;">
+                <i class="bi bi-arrow-left"></i> Back to Eligible Jobs
+            </a>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div class="notion-page-header">
+                <div class="notion-page-icon">📄</div>
+                <h1 class="notion-page-title" th:text="${job.title}">Senior Software Engineer</h1>
+                <p class="notion-page-desc" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="notion-tag blue" th:text="${company.name}">Google</span>
+                    <span style="color: var(--text-tertiary);">•</span>
+                    <span style="color: var(--text-secondary);" th:text="${company.contactEmail}">contact@google.com</span>
+                </p>
+            </div>
+
+            <!-- Notion Property Table -->
+            <div style="border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 12px 0; margin-bottom: 24px; display: grid; grid-template-columns: 140px 1fr; gap: 12px; font-size: 13.5px;">
+                <div style="color: var(--text-secondary);">Offered Package</div>
+                <div><span class="notion-tag green" style="font-weight: 600;" th:text="${job.packageLpa} + ' LPA'">15.0 LPA</span></div>
+
+                <div style="color: var(--text-secondary);">Min CGPA</div>
+                <div th:text="${job.minCgpa}">7.5</div>
+
+                <div style="color: var(--text-secondary);">Max Backlogs</div>
+                <div th:text="${job.maxBacklogs}">0</div>
+
+                <div style="color: var(--text-secondary);">Eligible Branches</div>
+                <div>
+                    <span th:each="b : ${job.allowedBranches}" class="notion-tag gray" style="margin-right: 4px;" th:text="${b}">CSE</span>
+                </div>
+
+                <div style="color: var(--text-secondary);">Deadline</div>
+                <div style="color: var(--tag-red-text); font-weight: 500;" th:text="${#temporals.format(job.deadline, 'dd MMMM yyyy')}">25 December 2026</div>
+            </div>
+
+            <!-- Job Description -->
+            <div style="margin-bottom: 32px;">
+                <h3 style="font-size: 15px; font-weight: 600; margin-bottom: 12px;">About the Role</h3>
+                <div style="white-space: pre-line; line-height: 1.6; color: var(--text-primary);" th:text="${job.description}">
+                    Job description and responsibilities.
+                </div>
+            </div>
+
+            <div class="notion-divider"></div>
+
+            <!-- Action Bar -->
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: gap: 12px;">
+                <div>
+                    <span th:if="${alreadyApplied}" class="notion-tag green" style="padding: 6px 12px; font-size: 13px;">
+                        <i class="bi bi-check2"></i> You have already submitted an application
+                    </span>
+                    <span th:if="${!alreadyApplied && student.placed && singleOfferPolicy}" class="notion-tag yellow" style="padding: 6px 12px; font-size: 13px;">
+                        <i class="bi bi-lock"></i> Single-Offer Policy Active: Placed students cannot apply
+                    </span>
+                    <span th:if="${!alreadyApplied && (!student.placed || !singleOfferPolicy) && isEligible}" class="notion-tag blue" style="padding: 6px 12px; font-size: 13px;">
+                        <i class="bi bi-check2"></i> You meet all requirements for this position
+                    </span>
+                </div>
+
+                <div>
+                    <form th:if="${!alreadyApplied && (!student.placed || !singleOfferPolicy) && isEligible}"
+                          th:action="@{/student/jobs/{id}/apply(id=${job.id})}" method="post" style="margin: 0;">
+                        <button type="submit" class="notion-btn notion-btn-primary" style="padding: 7px 18px;">
+                            Submit application
+                        </button>
+                    </form>
+                    <a th:if="${alreadyApplied}" th:href="@{/student/applications}" class="notion-btn notion-btn-secondary">
+                        View in My Applications
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Companies - Placement Cell</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <div class="notion-page-header" style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div>
+                    <div class="notion-page-icon">🏢</div>
+                    <h1 class="notion-page-title">Recruiting Companies</h1>
+                    <p class="notion-page-desc">Authorized corporate partners and recruitment organizations.</p>
+                </div>
+                <div>
+                    <a th:href="@{/admin/companies/new}" class="notion-btn notion-btn-primary">
+                        <i class="bi bi-plus-lg"></i> Register company
+                    </a>
+                </div>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <div class="notion-table-wrapper" th:if="${not #lists.isEmpty(companies)}">
+                <table class="notion-table">
+                    <thead>
+                        <tr>
+                            <th>Company</th>
+                            <th>Contact Email</th>
+                            <th>Onboarded</th>
+                            <th>Job Postings</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="c : ${companies}">
+                            <td style="font-weight: 600;" th:text="${c.name}">Google</td>
+                            <td>
+                                <span style="color: var(--text-secondary);" th:text="${c.contactEmail}">contact@google.com</span>
+                            </td>
+                            <td style="color: var(--text-tertiary);" th:text="${#temporals.format(c.createdAt, 'dd MMM yyyy')}">Date</td>
+                            <td>
+                                <span class="notion-tag blue" th:text="${jobCounts[c.id]} ?: 0">0</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="notion-panel" th:if="${#lists.isEmpty(companies)}">
+                <div class="notion-empty-state">
+                    <div class="notion-empty-icon"><i class="bi bi-building"></i></div>
+                    <div class="notion-empty-title">No companies registered</div>
+                    <div class="notion-empty-subtitle">Register a company account to enable recruiters to post jobs.</div>
+                    <a th:href="@{/admin/companies/new}" class="notion-btn notion-btn-primary notion-btn-sm">Add Company</a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>

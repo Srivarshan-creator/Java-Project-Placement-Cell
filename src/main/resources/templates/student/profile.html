@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Profile &amp; Resume - Placement Portal</title>
+    <th:block th:replace="~{fragments/layout :: header-css}"></th:block>
+</head>
+<body>
+
+<div class="notion-layout">
+    <div th:replace="~{fragments/layout :: sidebar}"></div>
+
+    <main class="notion-main">
+        <header th:replace="~{fragments/layout :: topbar}"></header>
+
+        <div class="notion-page-content">
+            <div class="notion-page-header">
+                <div class="notion-page-icon">👤</div>
+                <h1 class="notion-page-title">Profile &amp; Resume</h1>
+                <p class="notion-page-desc">Manage your academic records, skills, and PDF resume for recruitment matching.</p>
+            </div>
+
+            <div th:replace="~{fragments/layout :: alerts}"></div>
+
+            <!-- Resume Section -->
+            <div class="notion-panel">
+                <div class="notion-panel-header">
+                    <h2 class="notion-panel-title">
+                        <i class="bi bi-file-earmark-pdf" style="color: var(--text-tertiary);"></i>
+                        <span>Resume (PDF, max 2 MB)</span>
+                    </h2>
+                    <div th:if="${student.resumeFileId != null}">
+                        <a th:href="@{/student/resume/download}" class="notion-btn notion-btn-secondary notion-btn-sm">
+                            <i class="bi bi-download"></i> Download current resume
+                        </a>
+                    </div>
+                </div>
+
+                <div style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 14px;">
+                    Current file:
+                    <span th:if="${student.resumeFileId != null}" class="notion-tag green">
+                        <i class="bi bi-file-earmark-check"></i> <span th:text="${student.resumeFileName} ?: 'Resume.pdf'">Resume.pdf</span>
+                    </span>
+                    <span th:unless="${student.resumeFileId != null}" class="notion-tag red">
+                        No resume uploaded
+                    </span>
+                </div>
+
+                <form th:action="@{/student/resume/upload}" method="post" enctype="multipart/form-data" style="display: flex; gap: 8px; align-items: center; max-width: 480px;">
+                    <input type="file" class="notion-input" id="resumeFile" name="resumeFile" accept="application/pdf" required style="padding: 4px 8px;">
+                    <button type="submit" class="notion-btn notion-btn-primary" style="white-space: nowrap;">
+                        Upload PDF
+                    </button>
+                </form>
+            </div>
+
+            <!-- Academic Profile Form -->
+            <div class="notion-panel">
+                <div class="notion-panel-header">
+                    <h2 class="notion-panel-title">
+                        <i class="bi bi-pencil" style="color: var(--text-tertiary);"></i>
+                        <span>Academic Information</span>
+                    </h2>
+                </div>
+
+                <form th:action="@{/student/profile}" th:object="${profileDto}" method="post">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="notion-form-group">
+                            <label for="name" class="notion-label">Full Name</label>
+                            <input type="text" class="notion-input" th:classappend="${#fields.hasErrors('name')} ? 'is-invalid'" id="name" th:field="*{name}">
+                            <div class="notion-error" th:errors="*{name}"></div>
+                        </div>
+
+                        <div class="notion-form-group">
+                            <label for="branch" class="notion-label">Department / Branch</label>
+                            <select class="notion-select" th:classappend="${#fields.hasErrors('branch')} ? 'is-invalid'" id="branch" th:field="*{branch}">
+                                <option th:each="b : ${branches}" th:value="${b}" th:text="${b}"></option>
+                            </select>
+                            <div class="notion-error" th:errors="*{branch}"></div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="notion-form-group">
+                            <label for="cgpa" class="notion-label">Cumulative GPA (CGPA)</label>
+                            <input type="number" step="0.01" min="0" max="10" class="notion-input" th:classappend="${#fields.hasErrors('cgpa')} ? 'is-invalid'" id="cgpa" th:field="*{cgpa}">
+                            <div class="notion-error" th:errors="*{cgpa}"></div>
+                        </div>
+
+                        <div class="notion-form-group">
+                            <label for="backlogs" class="notion-label">Current Backlogs</label>
+                            <input type="number" min="0" class="notion-input" th:classappend="${#fields.hasErrors('backlogs')} ? 'is-invalid'" id="backlogs" th:field="*{backlogs}">
+                            <div class="notion-error" th:errors="*{backlogs}"></div>
+                        </div>
+                    </div>
+
+                    <div class="notion-form-group">
+                        <label for="skills" class="notion-label">Technical Skills (comma-separated)</label>
+                        <input type="text" class="notion-input" th:classappend="${#fields.hasErrors('skills')} ? 'is-invalid'" id="skills" th:field="*{skills}">
+                        <div class="notion-error" th:errors="*{skills}"></div>
+                    </div>
+
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="submit" class="notion-btn notion-btn-primary">
+                            Save changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<div th:replace="~{fragments/layout :: scripts}"></div>
+</body>
+</html>
